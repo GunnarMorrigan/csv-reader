@@ -1,5 +1,11 @@
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+
+pub use transaction::*;
+
+use crate::client::Client;
+mod transaction;
+
 pub mod charge_back;
 pub mod deposit;
 pub mod dispute;
