@@ -98,3 +98,40 @@ impl Mutation {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::transaction::transaction_reader;
+
+    #[test]
+    pub fn example_input_test() {
+        let data = r"type, client, tx, amount
+            deposit, 1, 1, 1.1234
+            deposit, 2, 2, 2.0123
+            deposit, 1, 3, 2.0000
+            withdrawal, 1, 4, 1.5
+            withdrawal, 2, 5, 3.0
+            dispute, 1, 1
+            dispute, 1, 1
+            dispute, 2, 2,
+            chargeback, 1, 1
+            chargeback, 2, 2,
+            resolve, 1, 1
+            resolve, 2, 2";
+
+        dbg!(data);
+
+        let data = data.trim_matches(char::is_whitespace).as_bytes();
+
+        let reader = transaction_reader(data);
+
+        for tx in reader {
+            // dbg!(&tx);
+            assert!(tx.is_ok());
+            let tx_row = tx.unwrap();
+            let tx = super::Transaction::try_from(tx_row);
+            assert!(tx.is_ok());
+            dbg!(tx.unwrap());
+        }
+    }
+}
