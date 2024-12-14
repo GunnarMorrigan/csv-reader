@@ -103,3 +103,71 @@ impl Account {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal::Decimal;
+
+    use crate::{
+        account::Account,
+        client::Client,
+        transaction::{
+            charge_back::ChargeBack, deposit::Deposit, dispute::Dispute, resolve::Resolve,
+            withdrawal::Withdrawal, Mutation, TransactionId, Transfer,
+        },
+    };
+
+    #[test]
+    fn test_account() {
+        let mut account = Account::new(Client::new(1));
+        assert_eq!(account.total(), Decimal::new(0, 0));
+        assert_eq!(account.locked(), false);
+
+        account
+            .handle_transfer(&Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(1),
+                Decimal::new(100, 0),
+            )))
+            .unwrap();
+        assert_eq!(account.total(), Decimal::new(100, 0));
+
+        account
+            .handle_transfer(&Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(2),
+                Decimal::new(50, 0),
+            )))
+            .unwrap();
+        assert_eq!(account.total(), Decimal::new(50, 0));
+
+        account
+            .handle_mutation(
+                &Mutation::Dispute(Dispute::new(Client::new(1), TransactionId::new(1))),
+                Decimal::new(100, 0),
+            )
+            .unwrap();
+        assert_eq!(account.available, Decimal::new(-50, 0));
+        assert_eq!(account.held, Decimal::new(100, 0));
+        assert_eq!(account.total(), Decimal::new(50, 0));
+        assert_eq!(account.locked(), false);
+
+        account
+            .handle_mutation(
+                &Mutation::Resolve(Resolve::new(Client::new(1), TransactionId::new(1))),
+                Decimal::new(100, 0),
+            )
+            .unwrap();
+        assert_eq!(account.total(), Decimal::new(50, 0));
+        assert_eq!(account.locked(), false);
+
+        account
+            .handle_mutation(
+                &Mutation::ChargeBack(ChargeBack::new(Client::new(1), TransactionId::new(1))),
+                Decimal::new(100, 0),
+            )
+            .unwrap();
+        assert_eq!(account.total(), Decimal::new(-50, 0));
+        assert_eq!(account.locked(), true);
+    }
+}
