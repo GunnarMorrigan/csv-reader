@@ -21,11 +21,16 @@ impl Serialize for Account {
     where
         S: Serializer,
     {
+        // Apply bankers rounding
+        let round = |x: Decimal| {
+            x.round_dp_with_strategy(4, rust_decimal::RoundingStrategy::MidpointNearestEven)
+        };
+
         let mut s = serializer.serialize_struct("Account", 5)?;
         s.serialize_field("client", &self.client)?;
-        s.serialize_field("available", &self.available)?;
-        s.serialize_field("held", &self.held)?;
-        s.serialize_field("total", &self.total())?;
+        s.serialize_field("available", &round(self.available))?;
+        s.serialize_field("held", &round(self.held))?;
+        s.serialize_field("total", &round(self.total()))?;
         s.serialize_field("locked", &self.locked)?;
         s.end()
     }
