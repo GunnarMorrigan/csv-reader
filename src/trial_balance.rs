@@ -149,4 +149,194 @@ mod tests {
             assert_eq!(res, expected_res);
         }
     }
+
+    #[test]
+    fn test_trial_balance_2() {
+        let transactions = vec![
+            Transaction::Transfer(Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(1),
+                Decimal::new(100, 0),
+            ))),
+            Transaction::Transfer(Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(2),
+                Decimal::new(50, 0),
+            ))),
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Mutation(Mutation::Resolve(Resolve::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            // This should fail because the dispute was resolved
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Transfer(Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(3),
+                Decimal::new(50, 0),
+            ))),
+            // Duplicate transaction
+            Transaction::Transfer(Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(3),
+                Decimal::new(50, 0),
+            ))),
+        ];
+        let results = vec![
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Err(crate::error::TransactionError::InsufficientFunds),
+            Err(crate::error::TransactionError::DuplicateTransaction(
+                TransactionId::new(3),
+            )),
+        ];
+        let mut trial_balance = super::TrialBalance::new();
+        for (index, (tx, expected_res)) in transactions
+            .into_iter()
+            .zip(results.into_iter())
+            .enumerate()
+        {
+            let res = trial_balance.handle_transaction(tx);
+            assert_eq!(res, expected_res, "Failed on index {}", index);
+        }
+    }
+
+    #[test]
+    fn test_resolve_chargeback() {
+        let transactions = vec![
+            Transaction::Transfer(Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(1),
+                Decimal::new(100, 0),
+            ))),
+            Transaction::Transfer(Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(2),
+                Decimal::new(50, 0),
+            ))),
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Mutation(Mutation::ChargeBack(ChargeBack::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            // This should fail because the dispute was charged back
+            Transaction::Mutation(Mutation::Resolve(Resolve::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+        ];
+        let results = vec![
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Err(crate::error::TransactionError::ResolveError),
+        ];
+        let mut trial_balance = super::TrialBalance::new();
+        for (index, (tx, expected_res)) in transactions
+            .into_iter()
+            .zip(results.into_iter())
+            .enumerate()
+        {
+            let res = trial_balance.handle_transaction(tx);
+            assert_eq!(res, expected_res, "Failed on index {}", index);
+        }
+    }
+
+    #[test]
+    fn test_dispute_chargeback() {
+        let transactions = vec![
+            Transaction::Transfer(Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(1),
+                Decimal::new(100, 0),
+            ))),
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Mutation(Mutation::ChargeBack(ChargeBack::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            // This should fail because the dispute was charged back
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+        ];
+        let results = vec![
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Err(crate::error::TransactionError::DisputeError),
+        ];
+        let mut trial_balance = super::TrialBalance::new();
+        for (index, (tx, expected_res)) in transactions
+            .into_iter()
+            .zip(results.into_iter())
+            .enumerate()
+        {
+            let res = trial_balance.handle_transaction(tx);
+            assert_eq!(res, expected_res, "Failed on index {}", index);
+        }
+    }
+
+    #[test]
+    fn test_withdrawal_locked() {
+        let transactions = vec![
+            Transaction::Transfer(Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(1),
+                Decimal::new(100, 0),
+            ))),
+            Transaction::Mutation(Mutation::Dispute(Dispute::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Mutation(Mutation::ChargeBack(ChargeBack::new(
+                Client::new(1),
+                TransactionId::new(1),
+            ))),
+            Transaction::Transfer(Transfer::Withdrawal(Withdrawal::new(
+                Client::new(1),
+                TransactionId::new(2),
+                Decimal::new(100, 0),
+            ))),
+            // This should work because money send via bank transfer etc will still come in after locking
+            Transaction::Transfer(Transfer::Deposit(Deposit::new(
+                Client::new(1),
+                TransactionId::new(3),
+                Decimal::new(50, 0),
+            ))),
+        ];
+        let results = vec![
+            Ok(()),
+            Ok(()),
+            Ok(()),
+            Err(crate::error::TransactionError::AccountLocked),
+            Ok(()),
+        ];
+        let mut trial_balance = super::TrialBalance::new();
+        for (index, (tx, expected_res)) in transactions
+            .into_iter()
+            .zip(results.into_iter())
+            .enumerate()
+        {
+            let res = trial_balance.handle_transaction(tx);
+            assert_eq!(res, expected_res, "Failed on index {}", index);
+        }
+    }
 }
