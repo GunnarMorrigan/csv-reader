@@ -62,15 +62,14 @@ impl Account {
 
     /// Handles the transfer transactions
     pub fn handle_transfer(&mut self, tx: &Transfer) -> Result<(), TransactionError> {
-        if self.locked {
-            return Err(TransactionError::AccountLocked);
-        }
-
         match tx {
             Transfer::Deposit(deposit) => {
                 self.available += deposit.amount();
             }
             Transfer::Withdrawal(withdrawal) => {
+                if self.locked {
+                    return Err(TransactionError::AccountLocked);
+                }
                 if self.available < withdrawal.amount() {
                     return Err(TransactionError::InsufficientFunds);
                 }

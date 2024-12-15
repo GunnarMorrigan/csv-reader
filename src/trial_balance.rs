@@ -38,10 +38,6 @@ impl TrialBalance {
             .entry(tx.client())
             .or_insert(Account::new(tx.client()));
 
-        if account.locked() {
-            return Err(TransactionError::AccountLocked);
-        }
-
         match tx {
             Transaction::Transfer(transfer) => {
                 tracing::debug!("Handling transfer {:?}", transfer);
