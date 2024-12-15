@@ -8,8 +8,13 @@ use crate::{
     transaction_record::TransactionRecord,
 };
 
+/// Represents all accounts in the system and the transactions that have been processed.
+/// The ledger does not keep transaction mutations but merely the current state of the transaction.
+/// This keeps the ledger simple and reduces the overal size of the structure.
 #[derive(Debug)]
 pub struct TrialBalance {
+    // Hashmaps are the recommended data structure for this task.
+    // A Vec could be faster for accounts if max number of clients is known. A vec could also cause wasted space.
     accounts: HashMap<Client, Account>,
     ledger: HashMap<TransactionId, TransactionRecord>,
 }

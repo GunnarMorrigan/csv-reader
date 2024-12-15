@@ -60,7 +60,7 @@ impl Account {
         self.locked = true;
     }
 
-    /// Handles the transfer transactions
+    /// Handles the transfer transactions on the account
     pub fn handle_transfer(&mut self, tx: &Transfer) -> Result<(), TransactionError> {
         match tx {
             Transfer::Deposit(deposit) => {

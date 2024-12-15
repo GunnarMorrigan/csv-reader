@@ -8,6 +8,7 @@ use super::{
     resolve::Resolve, withdrawal::Withdrawal, TransactionId, TransactionRow, TransactionType,
 };
 
+/// Represents all possible transactions
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Serialize, Deserialize)]
 pub enum Transaction {
     /// Represents a deposit and withdrawal transaction.
@@ -126,12 +127,10 @@ mod tests {
         let reader = transaction_reader(data);
 
         for tx in reader {
-            // dbg!(&tx);
             assert!(tx.is_ok());
             let tx_row = tx.unwrap();
             let tx = super::Transaction::try_from(tx_row);
             assert!(tx.is_ok());
-            dbg!(tx.unwrap());
         }
     }
 }
