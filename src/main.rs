@@ -67,6 +67,8 @@ fn main() {
     }
     let stdout = std::io::stdout();
     let mut locked_stdout = stdout.lock();
-    trial_balance.to_csv(&mut locked_stdout);
+    if let Err(err) = trial_balance.to_csv(&mut locked_stdout) {
+        error!("Could not write to stdout {:?}", err);
+    }
     locked_stdout.flush().unwrap();
 }

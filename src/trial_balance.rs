@@ -27,16 +27,17 @@ impl TrialBalance {
         }
     }
 
-    pub fn to_csv<W>(&self, w: &mut W)
+    pub fn to_csv<W>(&self, w: &mut W) -> Result<(), csv::Error>
     where
         W: std::io::Write,
     {
         let mut wtr = csv::WriterBuilder::new().has_headers(true).from_writer(w);
-        for account in self.accounts.values() {
-            wtr.serialize(account).unwrap();
-        }
+        self.accounts
+            .values()
+            .try_for_each(|account| wtr.serialize(account))
     }
 
+    /// Handles a transaction and updates the accounts and ledger accordingly.
     pub fn handle_transaction(&mut self, tx: Transaction) -> Result<(), TransactionError> {
         let account = self
             .accounts
